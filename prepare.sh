@@ -59,6 +59,9 @@ require_cmd wget
 require_cmd curl
 require_cmd dpkg-deb
 require_cmd dpkg-query
+require_cmd readlink
+require_cmd setcap
+require_cmd systemctl
 require_cmd sudo
 
 if [[ -d "${HOME}/.oh-my-zsh" ]]; then
@@ -79,8 +82,37 @@ if dpkg-query -W -f='${Status} ${Version}\n' "$SUNSHINE_PKG_NAME" 2>/dev/null | 
   grep -q "install ok installed ${SUNSHINE_PKG_VERSION}"; then
   log_info "Sunshine already installed ($SUNSHINE_PKG_VERSION), skipping."
 else
-  log_info "Installing Sunshine package..."
+log_info "Installing Sunshine package..."
   sudo apt install -y "$SUNSHINE_DEB_PATH"
+fi
+
+log_info "Installing OpenSSH server..."
+sudo apt install -y openssh-server
+log_info "Enabling OpenSSH service..."
+sudo systemctl enable --now ssh
+
+SUNSHINE_BIN="$(command -v sunshine || true)"
+if [[ -z "$SUNSHINE_BIN" ]]; then
+  log_warn "sunshine binary not found; skipping cap_sys_admin."
+else
+  SUNSHINE_REAL="$(readlink -f "$SUNSHINE_BIN")"
+  if command -v getcap >/dev/null 2>&1 && getcap "$SUNSHINE_REAL" | grep -q 'cap_sys_admin+p'; then
+    log_info "cap_sys_admin already set for Sunshine, skipping."
+  else
+    log_info "Granting cap_sys_admin to Sunshine for KMS capture..."
+    sudo setcap cap_sys_admin+p "$SUNSHINE_REAL"
+  fi
+fi
+
+if systemctl --user list-unit-files --type=service >/dev/null 2>&1; then
+  if systemctl --user list-unit-files --type=service | awk '{print $1}' | grep -qx "sunshine.service"; then
+    log_info "Enabling Sunshine user service..."
+    systemctl --user enable --now sunshine
+  else
+    log_warn "Sunshine user service not found; skipping enable/start."
+  fi
+else
+  log_warn "User systemd not available; skipping Sunshine user service enable/start."
 fi
 
 sudo mkdir -p /usr/lib/firmware/edid
@@ -138,5 +170,8 @@ else
   sudo install -m 644 "$MODPROBE_TEMP" "$MODPROBE_PATH"
   sudo update-initramfs -u
 fi
+
+log_info "Disabling sleep targets..."
+sudo systemctl mask sleep.target suspend.target hibernate.target hybrid-sleep.target
 
 log_success "Done."
