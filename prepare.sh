@@ -56,23 +56,46 @@ require_cmd() {
 }
 
 require_cmd wget
+require_cmd curl
+require_cmd dpkg-deb
+require_cmd dpkg-query
 require_cmd sudo
+
+if [[ -d "${HOME}/.oh-my-zsh" ]]; then
+  log_info "Oh My Zsh already installed, skipping."
+else
+  log_info "Installing Oh My Zsh..."
+  sh -c "$(curl -fsSL https://raw.githubusercontent.com/ohmyzsh/ohmyzsh/master/tools/install.sh)"
+fi
 
 log_info "Downloading Sunshine package..."
 wget -q --show-progress --https-only "$SUNSHINE_DEB_URL" -O "$SUNSHINE_DEB_PATH"
 log_info "Downloading EDID file..."
 wget -q --show-progress --https-only "$EDID_2560_1440_URL" -O "$EDID_PATH"
 
-log_info "Installing Sunshine package..."
-sudo apt install -y "$SUNSHINE_DEB_PATH"
+SUNSHINE_PKG_NAME="$(dpkg-deb -f "$SUNSHINE_DEB_PATH" Package)"
+SUNSHINE_PKG_VERSION="$(dpkg-deb -f "$SUNSHINE_DEB_PATH" Version)"
+if dpkg-query -W -f='${Status} ${Version}\n' "$SUNSHINE_PKG_NAME" 2>/dev/null | \
+  grep -q "install ok installed ${SUNSHINE_PKG_VERSION}"; then
+  log_info "Sunshine already installed ($SUNSHINE_PKG_VERSION), skipping."
+else
+  log_info "Installing Sunshine package..."
+  sudo apt install -y "$SUNSHINE_DEB_PATH"
+fi
 
-log_info "Installing EDID firmware..."
 sudo mkdir -p /usr/lib/firmware/edid
-sudo cp "$EDID_PATH" "/usr/lib/firmware/edid/${EDID_FILENAME}"
+EDID_TARGET="/usr/lib/firmware/edid/${EDID_FILENAME}"
+if sudo test -f "$EDID_TARGET" && sudo cmp -s "$EDID_PATH" "$EDID_TARGET"; then
+  log_info "EDID firmware already up to date, skipping."
+else
+  log_info "Installing EDID firmware..."
+  sudo install -m 644 "$EDID_PATH" "$EDID_TARGET"
+fi
 
-log_info "Writing X11 headless config..."
 sudo mkdir -p /etc/X11/xorg.conf.d
-sudo tee /etc/X11/xorg.conf.d/10-nvidia-headless.conf >/dev/null <<EOF
+XORG_CONF_PATH="/etc/X11/xorg.conf.d/10-nvidia-headless.conf"
+XORG_CONF_TEMP="${WORK_DIR}/10-nvidia-headless.conf"
+cat <<EOF > "$XORG_CONF_TEMP"
 Section "Device"
     Identifier  "NvidiaGPU"
     Driver      "nvidia"
@@ -97,5 +120,23 @@ Section "Screen"
     EndSubSection
 EndSection
 EOF
+
+if sudo test -f "$XORG_CONF_PATH" && sudo cmp -s "$XORG_CONF_TEMP" "$XORG_CONF_PATH"; then
+  log_info "X11 headless config already up to date, skipping."
+else
+  log_info "Writing X11 headless config..."
+  sudo install -m 644 "$XORG_CONF_TEMP" "$XORG_CONF_PATH"
+fi
+
+MODPROBE_PATH="/etc/modprobe.d/nvidia-drm.conf"
+MODPROBE_TEMP="${WORK_DIR}/nvidia-drm.conf"
+echo "options nvidia-drm modeset=1" > "$MODPROBE_TEMP"
+if sudo test -f "$MODPROBE_PATH" && sudo cmp -s "$MODPROBE_TEMP" "$MODPROBE_PATH"; then
+  log_info "nvidia-drm modeset already enabled, skipping initramfs."
+else
+  log_info "Enabling nvidia-drm modeset and updating initramfs..."
+  sudo install -m 644 "$MODPROBE_TEMP" "$MODPROBE_PATH"
+  sudo update-initramfs -u
+fi
 
 log_success "Done."
