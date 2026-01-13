@@ -34,6 +34,14 @@ chmod +x prepare.sh
 ./prepare.sh
 ```
 
+If you want to install dependencies first:
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/stephane-segning/gaming-in-proxmox/main/deps.sh -o deps.sh
+chmod +x deps.sh
+./deps.sh
+```
+
 You can also run it in one line:
 
 ```bash
