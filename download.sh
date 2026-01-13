@@ -4,6 +4,7 @@ IFS=$'\n\t'
 
 WORK_DIR="$(mktemp -d)"
 
+# Check here https://github.com/LizardByte/Sunshine/releases for the latest version
 SUNSHINE_DEB_URL="https://github.com/LizardByte/Sunshine/releases/download/v2025.924.154138/sunshine-ubuntu-24.04-amd64.deb"
 EDID_2560_1440_URL="https://github.com/akatrevorjay/edid-generator/raw/master/2560x1440.bin"
 EDID_FILENAME="2560x1440.bin"
