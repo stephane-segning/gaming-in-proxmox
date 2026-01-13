@@ -13,6 +13,7 @@ EDID_PATH="${WORK_DIR}/${EDID_FILENAME}"
 EDID_TARGET="/usr/lib/firmware/edid/${EDID_FILENAME}"
 XORG_CONF_PATH="/etc/X11/xorg.conf.d/10-nvidia-headless.conf"
 MODPROBE_PATH="/etc/modprobe.d/nvidia-drm.conf"
+BUS_ID="${BUS_ID:-PCI:A:BC:D}"
 
 if [[ -t 1 && -z "${NO_COLOR:-}" ]]; then
   COLOR_RESET=$'\033[0m'
@@ -163,7 +164,7 @@ Section "Device"
     Identifier  "NvidiaGPU"
     Driver      "nvidia"
     VendorName  "NVIDIA Corporation"
-    BusID       "PCI:A:BC:D"
+    BusID       "${BUS_ID}"
 
     Option "AllowEmptyInitialConfiguration" "true"
     Option "UseDisplayDevice" "None"
