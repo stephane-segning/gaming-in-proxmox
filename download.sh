@@ -1,20 +1,46 @@
-WORK_DIR=$(mktemp -d)
+#!/usr/bin/env bash
+set -euo pipefail
+IFS=$'\n\t'
+
+WORK_DIR="$(mktemp -d)"
 
 SUNSHINE_DEB_URL="https://github.com/LizardByte/Sunshine/releases/download/v2025.924.154138/sunshine-ubuntu-24.04-amd64.deb"
-EDID_2440_1440="https://github.com/akatrevorjay/edid-generator/raw/master/2560x1440.bin"
+EDID_2560_1440_URL="https://github.com/akatrevorjay/edid-generator/raw/master/2560x1440.bin"
+EDID_FILENAME="2560x1440.bin"
+SUNSHINE_DEB_PATH="${WORK_DIR}/sunshine.deb"
+EDID_PATH="${WORK_DIR}/${EDID_FILENAME}"
 
-trap 'rm -rf $WORK_DIR' EXIT
+cleanup() {
+  rm -rf "$WORK_DIR"
+}
 
-wget $SUNSHINE_DEB_URL -O "$WORK_DIR/sunshine.deb"
-wget $EDID_2440_1440 -O "$WORK_DIR/2560x1440.bin"
+on_error() {
+  echo "Error: script failed at line $1" >&2
+}
 
-sudo apt install "$WORK_DIR/sunshine.deb"
+trap 'on_error $LINENO' ERR
+trap cleanup EXIT
+
+require_cmd() {
+  if ! command -v "$1" >/dev/null 2>&1; then
+    echo "Error: missing required command: $1" >&2
+    exit 1
+  fi
+}
+
+require_cmd wget
+require_cmd sudo
+
+wget -q --show-progress --https-only "$SUNSHINE_DEB_URL" -O "$SUNSHINE_DEB_PATH"
+wget -q --show-progress --https-only "$EDID_2560_1440_URL" -O "$EDID_PATH"
+
+sudo apt install "$SUNSHINE_DEB_PATH"
 
 sudo mkdir -p /usr/lib/firmware/edid
-sudo cp ~/edid_files/2560x1440.bin /usr/lib/firmware/edid/qhd.bin
+sudo cp "$EDID_PATH" "/usr/lib/firmware/edid/${EDID_FILENAME}"
 
-mkdir -d /etc/X11/xorg.conf.d
-cat <<EOF > /etc/X11/xorg.conf.d/10-nvidia-headless.conf
+sudo mkdir -p /etc/X11/xorg.conf.d
+sudo tee /etc/X11/xorg.conf.d/10-nvidia-headless.conf >/dev/null <<EOF
 Section "Device"
     Identifier  "NvidiaGPU"
     Driver      "nvidia"
@@ -30,7 +56,7 @@ Section "Screen"
     Device     "NvidiaGPU"
     DefaultDepth 24
 
-    Option "CustomEDID" "DFP-0:/usr/lib/firmware/edid/2560x1440.bin"
+    Option "CustomEDID" "DFP-0:/usr/lib/firmware/edid/${EDID_FILENAME}"
     Option "IgnoreEDIDChecksum" "DFP-0"
 
     SubSection "Display"
