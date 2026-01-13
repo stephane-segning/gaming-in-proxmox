@@ -19,7 +19,9 @@ curl -fsSL https://raw.githubusercontent.com/stephane-segning/gaming-in-proxmox/
 ```
 
 ```bash
-sudo apt-get install -y qemu-guest-agent
+sudo apt-get install -y qemu-guest-agent \
+  && systemctl start qemu-guest-agent \
+  && systemctl enable qemu-guest-agent
 ```
 
 ### Notes
