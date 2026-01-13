@@ -15,17 +15,11 @@ X11 headless config for NVIDIA. It is geared toward Ubuntu 24.04 with `apt`.
 Download the script directly from your repo's raw URL, then run it:
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/stephane-segning/gaming-in-proxmox/main/prepare.sh -o prepare.sh
-chmod +x prepare.sh
-./prepare.sh
+curl -fsSL https://raw.githubusercontent.com/stephane-segning/gaming-in-proxmox/main/prepare.sh | bash
 ```
 
-Or with `wget`:
-
 ```bash
-wget -O prepare.sh https://raw.githubusercontent.com/stephane-segning/gaming-in-proxmox/main/prepare.sh
-chmod +x prepare.sh
-./prepare.sh
+sudo apt-get install -y qemu-guest-agent
 ```
 
 ### Notes
