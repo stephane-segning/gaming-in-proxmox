@@ -1,4 +1,5 @@
 *
 !prepare.sh
+!deps.sh
 !README.md
 !.gitignore
